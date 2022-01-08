@@ -64,11 +64,20 @@
             <version>5.1.0</version>
             <scope>test</scope>
         </dependency>
+        <!--
         <dependency>
             <groupId>org.mongodb</groupId>
             <artifactId>mongodb-driver-sync</artifactId>
             <version>3.9.1</version>
         </dependency>
+        -->
+        <!-- https://mvnrepository.com/artifact/org.mongodb/mongodb-driver-sync -->
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>mongodb-driver-sync</artifactId>
+            <version>4.4.1</version>
+        </dependency>
+
     </dependencies>
 
     <build>

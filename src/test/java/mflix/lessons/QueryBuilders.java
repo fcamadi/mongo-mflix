@@ -58,10 +58,10 @@ public class QueryBuilders extends AbstractLesson {
     // And now with the Filters Builder API
     // Notice we've made the switch from Document to Bson
     Bson queryFilter = eq("cast", "Salma Hayek");
-    Document builderActual = moviesCollection.find(queryFilter).limit(1).iterator().tryNext();
+    Document actual2 = moviesCollection.find(queryFilter).limit(1).iterator().tryNext();
 
     // we should have found the same document
-    Assert.assertEquals(actual, builderActual);
+    Assert.assertEquals(actual, actual2);
   }
 
   /**

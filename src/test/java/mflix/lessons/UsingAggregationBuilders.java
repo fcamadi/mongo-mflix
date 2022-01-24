@@ -110,7 +110,7 @@ public class UsingAggregationBuilders extends AbstractLesson {
     For all movies produced in Portugal, sum the number of times
     a particular cast member gets to visit such a lovely place. How
     many times has an individual cast member, participated in a movie
-    produced in this country. And ofcourse, let's not forget to return the
+    produced in this country. And of course, let's not forget to return the
     results sorted Ascending regarding the number of gigs.
     In the mongo shell this question would be answered by the following
     aggregation:

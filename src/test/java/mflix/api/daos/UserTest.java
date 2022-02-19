@@ -81,8 +81,7 @@ public class UserTest extends TicketTest {
     Session session = dao.getUserSession(testUser.getEmail());
     assertEquals(
         "The user email needs to match the `session` user_id field",
-        testUser.getEmail(),
-        session.getUserId());
+        testUser.getEmail(), session.getUserId());
     assertEquals("jwt key needs to match the session `jwt`", jwt, session.getJwt());
   }
 

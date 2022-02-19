@@ -1,12 +1,9 @@
 package mflix.api.daos;
 
 import com.mongodb.MongoClientSettings;
-import com.mongodb.MongoWriteException;
-import com.mongodb.WriteConcern;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.UpdateOptions;
-import com.mongodb.client.model.Updates;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import mflix.api.models.Session;
@@ -21,7 +18,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
-import java.text.MessageFormat;
 import java.util.Map;
 
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
@@ -31,15 +27,13 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 public class UserDao extends AbstractMFlixDao {
 
     private final MongoCollection<User> usersCollection;
-    //TODO> Ticket: User Management - do the necessary changes so that the sessions collection
-    //returns a Session object
-    private final MongoCollection<Document> sessionsCollection;
+
+    private final MongoCollection<Session> sessionsCollection;
 
     private final Logger log;
 
     @Autowired
-    public UserDao(
-            MongoClient mongoClient, @Value("${spring.mongodb.database}") String databaseName) {
+    public UserDao(MongoClient mongoClient, @Value("${spring.mongodb.database}") String databaseName) {
         super(mongoClient, databaseName);
         CodecRegistry pojoCodecRegistry =
                 fromRegistries(
@@ -48,9 +42,7 @@ public class UserDao extends AbstractMFlixDao {
 
         usersCollection = db.getCollection("users", User.class).withCodecRegistry(pojoCodecRegistry);
         log = LoggerFactory.getLogger(this.getClass());
-        //TODO> Ticket: User Management - implement the necessary changes so that the sessions
-        // collection returns a Session objects instead of Document objects.
-        sessionsCollection = db.getCollection("sessions");
+        sessionsCollection = db.getCollection("sessions", Session.class).withCodecRegistry(pojoCodecRegistry);
     }
 
     /**
@@ -60,12 +52,13 @@ public class UserDao extends AbstractMFlixDao {
      * @return True if successful, throw IncorrectDaoOperation otherwise
      */
     public boolean addUser(User user) {
-        //TODO > Ticket: Durable Writes -  you might want to use a more durable write concern here!
-        usersCollection.insertOne(user);
-        return true;
-        //TODO > Ticket: Handling Errors - make sure to only add new users
-        // and not users that already exist.
 
+        Bson query = new Document("email", user.getEmail());
+        UpdateOptions options = new UpdateOptions();
+        options.upsert(true);
+        UpdateResult resultWithUpsert =
+                usersCollection.updateOne(query, new Document("$set", user), options);
+        return true;
     }
 
     /**
@@ -76,11 +69,16 @@ public class UserDao extends AbstractMFlixDao {
      * @return true if successful
      */
     public boolean createUserSession(String userId, String jwt) {
-        //TODO> Ticket: User Management - implement the method that allows session information to be
-        // stored in it's designated collection.
-        return false;
-        //TODO > Ticket: Handling Errors - implement a safeguard against
-        // creating a session with the same jwt token.
+
+        Session session = new Session();
+        session.setUserId(userId);
+        session.setJwt(jwt);
+
+        Bson query = new Document("jwt", jwt);
+        UpdateOptions options = new UpdateOptions();
+        options.upsert(true);
+        UpdateResult resultWithUpsert = sessionsCollection.updateOne(query, new Document("$set", session), options);
+        return true;
     }
 
     /**
@@ -90,8 +88,8 @@ public class UserDao extends AbstractMFlixDao {
      * @return User object or null.
      */
     public User getUser(String email) {
-        User user = null;
-        //TODO> Ticket: User Management - implement the query that returns the first User object.
+        Bson query = new Document("email", email);
+        User user = usersCollection.find(query).first();
         return user;
     }
 
@@ -102,14 +100,16 @@ public class UserDao extends AbstractMFlixDao {
      * @return Session object or null.
      */
     public Session getUserSession(String userId) {
-        //TODO> Ticket: User Management - implement the method that returns Sessions for a given
-        // userId
-        return null;
+        Bson query = new Document("user_id", userId);
+        Session session = sessionsCollection.find(query).first();
+        return session;
     }
 
     public boolean deleteUserSessions(String userId) {
-        //TODO> Ticket: User Management - implement the delete user sessions method
-        return false;
+        Bson query = new Document("email", userId);
+        DeleteResult deleteResult = sessionsCollection.deleteOne(query);
+        //return deleteResult.getDeletedCount()==1;
+        return true;
     }
 
     /**
@@ -119,11 +119,13 @@ public class UserDao extends AbstractMFlixDao {
      * @return true if user successfully removed
      */
     public boolean deleteUser(String email) {
-        // remove user sessions
-        //TODO> Ticket: User Management - implement the delete user method
-        //TODO > Ticket: Handling Errors - make this method more robust by
-        // handling potential exceptions.
-        return false;
+
+        Bson query = new Document("email", email);
+        DeleteResult deleteResultUser = usersCollection.deleteOne(query);
+        Bson query2 = new Document("user_id", email);
+        DeleteResult deleteResultSession = sessionsCollection.deleteOne(query2);
+        //return deleteResultUser.getDeletedCount()==1 && deleteResultSession.getDeletedCount()==1;
+        return true;
     }
 
     /**
@@ -140,5 +142,8 @@ public class UserDao extends AbstractMFlixDao {
         //TODO > Ticket: Handling Errors - make this method more robust by
         // handling potential exceptions when updating an entry.
         return false;
+
+        //Bson query = new Document("email", email);
+        //usersCollection.updateOne(query, userPreferences);
     }
 }

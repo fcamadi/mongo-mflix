@@ -1,6 +1,7 @@
 package mflix.api.daos;
 
 import com.mongodb.MongoClientSettings;
+import com.mongodb.WriteConcern;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.UpdateOptions;
@@ -52,12 +53,15 @@ public class UserDao extends AbstractMFlixDao {
      * @return True if successful, throw IncorrectDaoOperation otherwise
      */
     public boolean addUser(User user) {
-
+        /*
         Bson query = new Document("email", user.getEmail());
         UpdateOptions options = new UpdateOptions();
         options.upsert(true);
         UpdateResult resultWithUpsert =
                 usersCollection.updateOne(query, new Document("$set", user), options);
+        */
+        usersCollection.withWriteConcern(WriteConcern.MAJORITY).insertOne(user);
+
         return true;
     }
 

@@ -19,7 +19,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
@@ -141,13 +143,22 @@ public class UserDao extends AbstractMFlixDao {
      * @return User object that just been updated.
      */
     public boolean updateUserPreferences(String email, Map<String, ?> userPreferences) {
-        //TODO> Ticket: User Preferences - implement the method that allows for user preferences to
-        // be updated.
-        //TODO > Ticket: Handling Errors - make this method more robust by
-        // handling potential exceptions when updating an entry.
-        return false;
 
-        //Bson query = new Document("email", email);
-        //usersCollection.updateOne(query, userPreferences);
+        if (Objects.isNull(userPreferences)) {
+            throw new IncorrectDaoOperation("Null preferences for user "+email);
+        }
+
+        Bson query = new Document("email", email);
+        User user = usersCollection.find(query).iterator().tryNext();
+        if (user.getPreferences()==null) {
+            user.setPreferences(new HashMap<>());
+        }
+
+        for (String key : userPreferences.keySet()) {
+            user.getPreferences().put(key, (String) userPreferences.get(key));
+        }
+
+        usersCollection.replaceOne(query, user);
+        return true;
     }
 }

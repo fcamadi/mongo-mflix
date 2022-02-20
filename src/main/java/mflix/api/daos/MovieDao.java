@@ -11,9 +11,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+
+import static java.util.Arrays.asList;
 
 @Component
 public class MovieDao extends AbstractMFlixDao {
@@ -65,8 +66,47 @@ public class MovieDao extends AbstractMFlixDao {
         // match stage to find movie
         Bson match = Aggregates.match(Filters.eq("_id", new ObjectId(movieId)));
         pipeline.add(match);
-        // TODO> Ticket: Get Comments - implement the lookup stage that allows the comments to
-        // retrieved with Movies.
+
+        //join movies - comments
+
+        // 1st try - code from Compass
+        /*
+        Bson lookup = new Document("$lookup",
+                new Document("from", "comments")
+                        .append("let", new Document("id", "$_id"))
+                        .append("pipeline", Arrays.asList(
+                                new Document("$match",
+                                        new Document("$expr",
+                                                new Document("$eq", Arrays.asList("$movie_id", "$$id")))),
+                                new Document("$sort",new Document("date", new BsonInt32(-1)))
+                        ))
+                        .append("as", "comments"));
+        pipeline.add(lookup);
+        */
+
+        // 2nd version: refactoring 1st version
+        /*
+        Bson matchComment = new Document("$match",new Document("$expr",new Document("$eq", Arrays.asList("$movie_id","$$id"))));
+        Bson sort = new Document("$sort",new Document("date", new BsonInt32(-1)));
+
+        Bson lookup = new Document("$lookup",
+                new Document("from", "comments")
+                        .append("let", new Document("id", "$_id"))
+                        .append("pipeline", Arrays.asList(matchComment,sort))
+                        .append("as", "comments"));
+        pipeline.add(lookup);
+        */
+
+        // 3rd version: using helper methods
+        List<Bson> lookupStages = new ArrayList<>();
+        Bson matchComments = Aggregates.match(Filters.expr(new Document("$eq", asList("$movie_id","$$id"))));
+        lookupStages.add(matchComments);
+        Bson sort = Aggregates.sort(Sorts.descending("date"));
+        lookupStages.add(sort);
+
+        Bson lookup = Aggregates.lookup("comments", asList(new Variable<>("id", "$_id")), lookupStages, "comments");
+        pipeline.add(lookup);
+
         Document movie = moviesCollection.aggregate(pipeline).first();
 
         return movie;
@@ -119,7 +159,7 @@ public class MovieDao extends AbstractMFlixDao {
      */
     public List<Document> getMoviesByCountry(String... country) {
 
-        Bson queryFilter = new Document("countries", new Document("$all", Arrays.asList(country)));
+        Bson queryFilter = new Document("countries", new Document("$all", asList(country)));
         Bson projection = new Document("title", 1);
 
         List<Document> movies = new ArrayList<>();
@@ -198,7 +238,7 @@ public class MovieDao extends AbstractMFlixDao {
         Bson sort = Sorts.descending(sortKey);
         List<Document> movies = new ArrayList<>();
         moviesCollection.find(castFilter).limit(limit).batchSize(limit).sort(sort).skip(skip).iterator()
-        .forEachRemaining(movies::add);
+                .forEachRemaining(movies::add);
         return movies;
     }
 

@@ -1,16 +1,11 @@
 package mflix.api.daos;
 
 import com.mongodb.MongoClientSettings;
-import com.mongodb.MongoWriteException;
-import com.mongodb.ReadConcern;
+import com.mongodb.WriteConcern;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.model.Aggregates;
-import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.Sorts;
 import com.mongodb.client.model.Updates;
-import com.mongodb.client.result.DeleteResult;
-import com.mongodb.client.result.UpdateResult;
+import com.mongodb.client.result.InsertOneResult;
 import mflix.api.models.Comment;
 import mflix.api.models.Critic;
 import org.bson.Document;
@@ -24,10 +19,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.text.MessageFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
@@ -77,11 +71,17 @@ public class CommentDao extends AbstractMFlixDao {
      */
     public Comment addComment(Comment comment) {
 
-        // TODO> Ticket - Update User reviews: implement the functionality that enables adding a new
-        // comment.
-        // TODO> Ticket - Handling Errors: Implement a try catch block to
-        // handle a potential write exception when given a wrong commentId.
-        return null;
+        if (Objects.isNull(comment.getId())) {
+            throw new IncorrectDaoOperation("Comment must have an id");
+        }
+
+        try {
+            InsertOneResult result = commentCollection.withWriteConcern(WriteConcern.MAJORITY).insertOne(comment);
+            return comment;
+        }
+        catch(Exception e) {
+            return null;
+        }
     }
 
     /**
@@ -99,11 +99,14 @@ public class CommentDao extends AbstractMFlixDao {
      */
     public boolean updateComment(String commentId, String text, String email) {
 
-        // TODO> Ticket - Update User reviews: implement the functionality that enables updating an
-        // user own comments
-        // TODO> Ticket - Handling Errors: Implement a try catch block to
-        // handle a potential write exception when given a wrong commentId.
-        return false;
+        Bson query = new Document("_id", new ObjectId(commentId));
+        Comment comment = commentCollection.find(query).first();
+        if (!Objects.equals(comment.getEmail(), email)) {
+            return false;
+        }
+
+        commentCollection.updateOne(query, Updates.set("text", text));
+        return true;
     }
 
     /**
@@ -114,12 +117,36 @@ public class CommentDao extends AbstractMFlixDao {
      * @return true if successful deletes the comment.
      */
     public boolean deleteComment(String commentId, String email) {
-        // TODO> Ticket Delete Comments - Implement the method that enables the deletion of a user
-        // comment
-        // TIP: make sure to match only users that own the given commentId
-        // TODO> Ticket Handling Errors - Implement a try catch block to
-        // handle a potential write exception when given a wrong commentId.
-        return false;
+
+        /* Given solution
+
+        // Create a delete filter that includes the commentId and owner email
+        Bson filter = Filters.and(
+                Filters.eq("email", email),
+                Filters.eq("_id", new ObjectId(commentId))
+        );
+
+        // Call deleteOne()
+        DeleteResult res = commentCollection.deleteOne(filter);
+        // in case the delete count is different than one the document
+        // either does not exist or it does not match the email + _id filter.
+        if (res.getDeletedCount()!=1){
+            log.warn("Not able to delete comment `{}` for user `{}`. User" +
+                            " does not own comment or already deleted!",
+                    commentId, email);
+            return false;
+        }
+        return true;
+        */
+
+        Bson query = new Document("_id", new ObjectId(commentId));
+        Comment comment = commentCollection.find(query).first();
+        if (Objects.isNull(comment) || !Objects.equals(comment.getEmail(), email)) {
+            return false;
+        }
+        //quite silly to get the document and then deleted it ...
+        Comment deletedComment = commentCollection.findOneAndDelete(query);
+        return !Objects.isNull(comment);
     }
 
     /**

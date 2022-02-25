@@ -15,10 +15,10 @@ import java.util.concurrent.TimeUnit;
 
 /* Hello!
  * In this lesson we are going to talk about Error Handling. We will
- * consider a few scenarios and error categories and find ways ways to fix those
+ * consider a few scenarios and error categories and find ways to fix those
  * errors.
  *
- * This way we wan to ensure that your application is resilient to issues that
+ * This way we want to ensure that your application is resilient to issues that
  * can occur in concurrent and distributed systems.
  *
  * Concurrent system will most likely have situations where duplicate

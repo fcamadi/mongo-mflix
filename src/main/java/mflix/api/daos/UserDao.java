@@ -1,6 +1,7 @@
 package mflix.api.daos;
 
 import com.mongodb.MongoClientSettings;
+import com.mongodb.MongoWriteException;
 import com.mongodb.WriteConcern;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -19,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
+import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -62,9 +64,16 @@ public class UserDao extends AbstractMFlixDao {
         UpdateResult resultWithUpsert =
                 usersCollection.updateOne(query, new Document("$set", user), options);
         */
-        usersCollection.withWriteConcern(WriteConcern.MAJORITY).insertOne(user);
-
-        return true;
+        try {
+            usersCollection.withWriteConcern(WriteConcern.MAJORITY).insertOne(user);
+            return true;
+        }
+        catch (MongoWriteException e) {
+            log.error(
+                    "Could not insert `{}` into `users` collection: {}", user.getEmail(), e.getMessage());
+            throw new IncorrectDaoOperation(
+                    MessageFormat.format("User with email `{0}` already exists", user.getEmail()));
+        }
     }
 
     /**
